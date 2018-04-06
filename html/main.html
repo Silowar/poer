@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>Hello MUI</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+		<!--标准mui.css-->
+		<link rel="stylesheet" href="../css/mui.min.css">
+		<link rel="stylesheet" type="text/css" href="../css/main.css" />
+		<link href="../css/mui.picker.css" rel="stylesheet" />
+		<link href="../css/mui.poppicker.css" rel="stylesheet" />
+		<!--App自定义的css-->
+		<link rel="stylesheet" type="text/css" href="../css/style_progress.css" />
+	</head>
+
+	<body class="fox-backgound-white">
+		<header class="mui-bar mui-bar-nav fox_header">
+			<a id="menu" class="mui-icon mui-icon-bars mui-pull-left mui-plus-visible1 fox-white"></a>
+			<!--<a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left fox-white"></a>-->
+			<!--<a id="menu" class="mui-icon mui-icon-bars mui-pull-right mui-plus-visible fox-white"></a>-->
+			<a id="add_device" class="mui-icon fox-icon-add mui-pull-right mui-plus-visible fox-white"></a>
+			<a id="alert_record" class="mui-icon mui-icon-email mui-pull-right mui-plus-visible fox-white"></a>
+			<h1 class="mui-title fox-white" id="locate_name"></h1>
+		</header>
+
+		<nav class="fox-bar mui-bar-tab" id="nav_foot" style="">
+			<a id="home_btn" class="fox-tab-item">
+				<div>
+					<div class="fox-icon mui-icon-athome"></div>
+					<div class="fox-tab-label" id="label_home"></div>
+				</div>
+			</a>
+			<a id="away_btn" class="fox-tab-item">
+				<div>
+					<div class="fox-icon mui-icon-beaway"></div>
+					<div class="fox-tab-label" id="label_away"></div>
+				</div>
+			</a>
+			<a id="holiday_btn" class="fox-tab-item">
+				<div>
+					<div class="fox-icon mui-icon-onholiday"></div>
+					<div class="fox-tab-label" id="label_holiday"></div>
+				</div>
+			</a>
+			<a id="off_btn" class="fox-tab-item">
+				<div>
+					<div class="fox-icon mui-icon-beoff"></div>
+					<div class="fox-tab-label" id="label_off"></div>
+				</div>
+			</a>
+		</nav>
+
+		<div class="fox_content" id="content">
+			<div style="padding: 0px 10px 0px 10px;">
+				<div id="segmentedControl" class="mui-segmented-control fox-segmented-control-positive" style="margin: 10px 0px 0px 0px;">
+					<a id="label_device_one" class="mui-control-item mui-active">
+					</a>
+					<a id="label_device_two" class="mui-control-item">
+					</a>
+				</div>
+			</div>
+			<div style="clear: both;"></div>
+			<div style="padding-top:2px;padding-bottom: 100px;">
+				<ul class="fox_ul" id="node_list">
+
+				</ul>
+				<div id="list_add_device" style="display: none;">
+					<div style="width:120px; margin: 0 auto;">
+						<img src="../img/lan_icon_main_add.png" style="width:120px;margin-top:100px;" />
+					</div>
+					<div id="add_device_text" style="text-align: center;margin-top: 10px;font-size:20px;">
+					</div>
+				</div>
+			</div>
+			<!--<ul class="fox_ul" id="node_list" style="padding-bottom: 100px;">
+			</ul>-->
+		</div>
+		<div id="progressPopover" class="mui-popover">
+			<div class="loading-bar">
+				<div class="amount green" style="width: 1%;" id="poer_progress_div">
+				</div>
+				<div>
+					<center id="label_submit"></center>
+				</div>
+			</div>
+		</div>
+	</body>
+	<script src="../js/jquery-3.1.0.min.js"></script>
+	<script src="../js/mui.js"></script>
+	<script src="../js/mui.picker.js"></script>
+	<script src="../js/mui.poppicker.js"></script>
+	<script src="../js/logger.js"></script>
+	<script src="../js/jpush.js"></script>
+	<!-- <script src="../js/aipush.js"></script> -->
+	<script src="../js/function.js"></script>
+	<script src="../js/url.js"></script>
+	<script src="../js/public.js"></script>
+	<script src="../js/language.js"></script>
+	<script>
+		var language;
+
+		function show_label() {
+			document.getElementById("label_home").innerHTML = poer_language.label_home(language);
+			document.getElementById("label_away").innerHTML = poer_language.label_away(language);
+			document.getElementById("label_holiday").innerHTML = poer_language.label_holiday(language);
+			document.getElementById("label_off").innerHTML = poer_language.label_off(language);
+			document.getElementById("add_device_text").innerHTML = poer_language.label_add_device(language);
+			document.getElementById("label_submit").innerHTML = poer_language.label_set_updating(language);
+		}
+		(function(m, doc) {
+			m.init({
+				statusBarBackground: '#f7f7f7'
+			});
+			m.ready(function() {
+				/***************************变量定义*****************************/
+//?				plus.screen.lockOrientation("portrait-primary");
+				var settings_login_info = poer_function.getLocalStorage("login_info");
+				language = settings_login_info.language;
+				var updTimes = 0;
+				var user_info;
+				var cur_locate_id;
+				var cur_locate_text;
+				var back_locate_id = null;
+				var back_locate_text = null;
+				var toastWaiting;
+				var locate_list;
+				var gateway_list;
+				var gateway_array;
+				var node_list;
+				var write_status_info; //设备写操作状态
+				var userId;
+				var node_count;
+				//-----
+				var can_write = true;
+				var temp;
+				//-----
+				var ul = doc.getElementById("node_list");
+				var list_add_device = doc.getElementById("list_add_device");
+				var li;
+				var back_refresh_interval = 1;
+				var back_refresh_flag = true;
+				var back_refresh_flag2 = true;
+				var change_device_type = false; //切换设备时也要刷新
+				var userTempUnit;
+				var devicetype_index = 0;
+				var runtime = 0;
+				var segmentedControl = doc.getElementById("segmentedControl");
+				var label_device_one = doc.getElementById("label_device_one");
+				var label_device_two = doc.getElementById("label_device_two");
+				var nav_foot = doc.getElementById("nav_foot");
+				var locate_name_div = doc.getElementById("locate_name");
+				var devicetype_array = poer_language.label_devicetype_array(language);
+				var update_times = 0;
+				var update_node_total = 0;
+				var update_node_success = 0;
+				var update_node_fail = 0;
+				var update_node_array = new Array(); //批量更新的id全部保存起来
+				var get_gateway_finished = false;
+				var get_node_finished = false;
+				var locatePicker = new m.PopPicker({
+					buttons: [poer_language.label_cancel(language),
+						poer_language.label_ok(language)
+					]
+				});
+				var locate_data = new Array();
+				var first = null;
+				var flag_toast = false;
+
+
+				/***************************变量定义*****************************/
+				/***************************函数定义*****************************/
+				function refreshList() {
+					if(!back_refresh_flag2){
+						return;
+					}
+					if (!change_device_type) {
+						if (!back_refresh_flag) {
+							if(runtime < 12 && !can_write){
+								//console.log("runtime:"+runtime);
+								runtime++;
+							}else{
+								setBackTask(true);
+								//console.log("runtime:"+runtime);
+								runtime = 0;
+								can_write = true;
+							}
+//							return;
+						}
+						
+					} else { //切换设备时需要刷新
+						change_device_type = false;
+					}
+					//console.log( "refresh list" )
+					//获取本地数据
+					user_info = poer_function.getLocalStorage("user_info");
+					userId = user_info.Id;
+					userTempUnit = user_info['DisplayMode'];
+					locate_list = poer_function.getLocalStorage("locate_list");
+					cur_locate_id = poer_function.getLocalStorage("cur_locate_id");
+					gateway_list = poer_function.getLocalStorage("gateway_list");
+					node_list = poer_function.getLocalStorage("node_list");
+					write_status_info = poer_function.getLocalStorage("write_status_info");
+					var locate_info;
+					//区域列表显示
+					for (var i in locate_list) {
+						locate_info = locate_list[i];
+						if (locate_info['ID'] == cur_locate_id) {
+							locate_name_div.innerHTML = locate_info['Name'] + "<img src='../img/lan_icon_show_select.png' style='width:10px;margin-left:5px;'/>";
+							break;
+						}
+					}
+					//判断是否显示tab
+					var device_one_count = 0; //温控
+					var device_two_count = 0; //安防
+					for (var i in node_list) {
+						if (node_list[i]['NodeType'] < 2) {
+							device_one_count++;
+						} else {
+							device_two_count++;
+						}
+					}
+					//device_one_count = 0;
+					//device_two_count = 0;
+					//devicetype_index = 0;
+					//没有设备，显示增加设备界面
+					if (device_one_count + device_two_count == 0 && nodeAddStack.length == 0) {
+						list_add_device.style.display = "";
+						ul.style.display = "none";
+						segmentedControl.style.display = "none";
+						nav_foot.style.display = "none";
+						return;
+					}else if( device_one_count + device_two_count == 0 && nodeAddStack.length > 0 ){
+						ul.innerHTML = '';
+						var addNodeCurLocateCount = 0;
+						$.each( nodeAddStack, function (n, val) {
+							if( ( poer_function.getLocalStorage("cur_locate_id") == val.locate_id ) ) {
+								list_add_device.style.display = "none";
+								ul.style.display = "";
+								nav_foot.style.display = "none";
+								segmentedControl.style.display = "none";
+								createAddWaitDevice( val.node_sn );
+								addNodeCurLocateCount++;
+							}
+						});
+						if( addNodeCurLocateCount == 0 ) {
+							list_add_device.style.display = "";
+							ul.style.display = "none";
+							segmentedControl.style.display = "none";
+							nav_foot.style.display = "none";
+							return;
+						}
+						if( devicetype_index == 1 ) {
+							$(".self-device-left").hide();
+						}else{
+							$(".self-device-right").hide();
+						}
+						return;
+					}
+					list_add_device.style.display = "none";
+					ul.style.display = "";
+					//又有温控，又有安防设备，显示切换按钮
+					if (device_one_count > 0 && device_two_count > 0) {
+						segmentedControl.style.display = "";
+						if (devicetype_index == 1) {
+							label_device_one.className = "mui-control-item";
+							nav_foot.style.display = "none";
+							label_device_two.className = "mui-control-item  mui-active";
+							security_show();
+						} else {
+							label_device_one.className = "mui-control-item mui-active";
+							nav_foot.style.display = "";
+							label_device_two.className = "mui-control-item";
+							node_show();
+						}
+					} else {
+						segmentedControl.style.display = "none";
+						if (device_one_count > 0) { //只有温控设备
+							devicetype_index = 0;
+							nav_foot.style.display = "";
+							node_show();
+						} else { //只有安防设备
+							devicetype_index = 1;
+							nav_foot.style.display = "none";
+							security_show();
+						}
+					}
+					if (get_gateway_finished && get_node_finished && toastWaiting != undefined) {
+						toastWaiting.close();
+					}
+					
+					if( nodeAddStack.length > 0  ) {
+						$.each( nodeAddStack, function (n, val) {
+							if( ( poer_function.getLocalStorage("cur_locate_id") == val.locate_id ) ) {
+								createAddWaitDevice( val.node_sn );
+							}
+						});
+						if( devicetype_index == 1 ) {
+							$(".self-device-left").hide();
+						}else{
+							$(".self-device-right").hide();
+						}
+					}
+				}
+
+				function node_show() { //温控列表显示
+					var length = ul.childNodes.length;
+					for (var i = length - 1; i >= 0; i--) {
+						var childNode = ul.childNodes[i];
+						ul.removeChild(childNode);
+					}
+					var node_info;
+					var nodeId; //id
+					var nodeName; //节点名称
+					var other_info;
+					var TempUnit = userTempUnit == 0 ? "C" : "F"; //温度单位
+					var curTemp; //当前温度
+					var child_max_temp; //整数部分
+					var child_min_temp; //小数部分
+					var humidity; //湿度
+					var work_mode;
+					var show_work_mode;
+					var curTime = new Date().getTime() / 1000;
+					var gateway_id;
+					gateway_array = [];
+					var gateway_info;
+					var device_type;
+					var fox_div = 'fox_online_div';
+					for (var i in gateway_list) {
+						gateway_info = gateway_list[i];
+						gateway_array[gateway_info['Id']] = gateway_info['IsOnline'];
+					}
+					can_write = true;
+          var log_msg = ''+new Date();
+					for (var i in node_list) {
+						node_info = node_list[i];
+						device_type = node_info['NodeType'];
+						if (device_type != 0 && device_type != 1) {
+							continue;
+						}
+						nodeId = node_info['Id'];
+						nodeName = node_info['NodeName'];
+						if (nodeName == null || nodeName == "") {
+							nodeName = node_info['NodeSN'];
+						}
+						humidity = node_info['Humidity'];
+						li = document.createElement('li');
+						li.className = 'fox_li';
+						curTemp = node_info['CurTemperature'];
+						child_max_temp = parseInt(curTemp / 10);
+						child_min_temp = curTemp % 10;
+						var device_status = write_status_info[nodeId];
+						log_msg+=' - ' + nodeName+' :' + child_max_temp+'.'+child_min_temp+' C  '+humidity+'%';
+						if (device_status == 0 ) {
+							show_work_mode = poer_language.label_updating(language) + "<img src='../img/lan_icon_waitting.gif' style='width:15px;height:15px;'/>";
+							can_write = false;
+						} else {
+							work_mode = node_info['OverrideIsOpen'];
+							if (work_mode == 1) {
+								show_work_mode = poer_language.label_override(language);
+							} else if (node_info['HolidayEnable'] && (node_info['HolidayEnd'] - node_info['HolidayStart'] > 0) && (curTime - node_info['HolidayEnd'] < 0) && (curTime - node_info['HolidayStart'] > 0)) {
+								//假日模式下
+								show_work_mode = poer_language.label_holiday(language);
+							} else {
+								work_mode = node_info['WorkMode'];
+								switch (work_mode) {
+									case 0:
+										show_work_mode = poer_language.label_home(language);
+										break;
+									case 1: //特殊处理
+										show_work_mode = poer_language.label_home(language);
+										break;
+									case 2:
+										show_work_mode = poer_language.label_off(language);
+										break;
+									case 3:
+										show_work_mode = poer_language.label_away(language);
+										break;
+									default:
+										show_work_mode = poer_language.label_home(language);
+										break;
+								}
+							}
+						}
+						fox_div = 'fox_online_div';
+						//判断网关是否离线以及设备是否在线
+						if (!node_info['RfLinkGateway']) { //设备离线
+							show_work_mode = poer_language.label_offline(language);
+							fox_div = "fox_offline_div";
+             log_msg+=' !!!OFF!!!'; 
+						}
+						gateway_id = node_info['GatewayId'];
+
+						
+						if (!gateway_array[gateway_id]) {
+							show_work_mode = poer_language.label_gateway_offline(language);
+							fox_div = "fox_offline_div";
+						}
+						
+						if(6 == node_info['WorkMode']){
+							show_work_mode = poer_language.label_shutdown(language);
+							fox_div = "fox_offline_div";
+						}
+						var str;
+						str  = "<a id='" + nodeId + "' href='javascript:;'>" + "<div class='" + fox_div + "'>" + "<div class='fox_div_left'>" + "<div class='fox_div_top'>" + "<div class='fox_div_name'>" + nodeName + "</div>" + "<div class='fox_div_workmode'>" + show_work_mode + "</div>" + "</div>" + "<div class='fox_div_bottom'>" + "<div class='fox_div_bottom_left'>" + "<div class='fox_div_temp'>" + child_max_temp + "</div>" + "<div class='fox_div_temp_min'>." + child_min_temp + "</div>" + "<div class='fox_div_tempunit'>°</div>" + "<div class='fox_div_tempunit2'>" + TempUnit + "</div>" + "</div>" + "<div class='fox_div_bottom_right'>" + "<div class='fox_div_humity'>" + humidity + "%</div>" + "<div class='fox_div_word'>" + poer_language.label_humidity(language) + "</div>" + "</div>" + "</div>" + "</div>" + "</div>" + "</a>";
+						li.innerHTML = str;
+						//console.log( li.className );
+						//console.log( str )
+						ul.appendChild(li);
+					}
+          console.log(log_msg);
+				}
+
+				function security_show() { //传感器列表
+					var length = ul.childNodes.length;
+					for (var i = length - 1; i >= 0; i--) {
+						var childNode = ul.childNodes[i];
+						ul.removeChild(childNode);
+					}
+					var node_info;
+					var nodeId; //id
+					var nodeName; //节点名称
+					var gateway_id;
+					gateway_array = [];
+					var gateway_info;
+					var device_type;
+					for (var i in gateway_list) {
+						gateway_info = gateway_list[i];
+						gateway_array[gateway_info['Id']] = gateway_info['IsOnline'];
+					}
+					for (var i in node_list) {
+						var fox_div = "fox_safe_div";
+						node_info = node_list[i];
+						device_type = node_info['NodeType'];
+						if (device_type != 2) {
+							continue;
+						}
+						nodeId = node_info['Id'];
+						nodeName = node_info['NodeName'];
+						if (nodeName == null || nodeName == "") {
+							nodeName = node_info['NodeSN'];
+						}
+						li = document.createElement('li');
+						li.className = 'fox_li';
+						var other_info = "";
+						var nodeState = "";
+						if (node_info['RfLinkGateway']) {
+							gateway_id = node_info['GatewayId'];
+							nodeState = poer_language.label_safe(language);
+							if (!gateway_array[gateway_id]){
+								other_info = poer_language.label_gateway_offline(language);
+								fox_div = "fox_offline_div";
+							}
+								
+							if (node_info['Humidity'] == 1) {
+								fox_div = "fox_danger_div";
+								nodeState = '<a style="color:red;">' + poer_language.label_danger(language) + '</a>';
+//								nodeState = poer_language.label_danger(language);
+							}
+						} else { // 离线
+							fox_div = "fox_offline_div";
+							other_info = poer_language.label_offline(language);
+						}
+						var liHtml = "";
+						liHtml = "";
+						liHtml += "<a id='" + nodeId + "' href='javascript:;'>";
+						liHtml += "  <div class='" + fox_div + "'>";
+						liHtml += "	   <div class='fox_div_left'>";
+						liHtml += "	     <div class='fox_div_top'>";
+						liHtml += "        <div class='fox_div_name'>" + nodeName + "</div>";
+						liHtml += "	       <div class='fox_div_workmode'>" + other_info + "</div>";
+						liHtml += "      </div>";
+						liHtml += "      <div class='fox_div_bottom'>";
+						liHtml += "        <div class='fox_div_bottom_right'>";
+						liHtml += "          <div class='fox_div_word'>" + nodeState + "</div>";
+						liHtml += "        </div>";
+						liHtml += "      </div>";
+						liHtml += "    </div>";
+						liHtml += "  </div>";
+						liHtml += "</a>";
+						li.innerHTML = liHtml;
+						ul.appendChild(li);
+					}
+				}
+				function setBackTask(status) {
+					if (!status) {
+						update_times = 0;
+						var write_status_info = poer_function.getLocalStorage("write_status_info");
+						var write_status_type = poer_function.getLocalStorage("write_status_type");
+						var node_id;
+							for(var i in update_node_array){
+								node_id = update_node_array[i];
+								write_status_info[node_id] = 0;
+								write_status_type[node_id] = 1;
+							}
+		                poer_function.setLocalStorage("write_status_info", write_status_info);
+						poer_function.setLocalStorage("write_status_type", write_status_type);
+						refreshList();
+						back_refresh_flag = status;
+					} else {
+						if (update_node_array.length > 0) {
+							var write_status_info = poer_function.getLocalStorage("write_status_info");
+							var write_status_type = poer_function.getLocalStorage("write_status_type");
+							var node_id;
+							for (var i in update_node_array) {
+								node_id = update_node_array[i];
+								if(write_status_type[node_id] == 1 || write_status_info[node_id] == 0){
+									write_status_info[node_id] = 1;
+									write_status_type[node_id] = 0;
+								}
+							}
+							poer_function.setLocalStorage('write_status_info', write_status_info);
+							poer_function.setLocalStorage("write_status_type", write_status_type);
+						}
+						back_refresh_flag = status;
+						refreshList();
+					}
+					//console.log( "476---  "  +JSON.stringify( write_status_info ) )
+//					poer_function.setLocalStorage('update_back_refresh', status);
+				}
+				//后台定时刷新数据,5秒
+				function backRefresh() {
+					back_refresh_interval = setInterval(function() {
+						get_gateway_finished = false;
+						get_node_finished = false;
+						back_refresh_flag2 = false;
+						getGatewayList(userId, cur_locate_id);
+						 if( nodeAddStack.length > 0 ) {
+						 	getNodeAddInfo();
+						 }
+					}, 15000);
+				}
+				function set_active_success(data) {
+				}
+
+				function set_active_fail(xhr, textStatus, errorThrown) {
+				}
+				function check_node_status() {
+				}
+
+				function check_send_status() {
+					//console.log( "update_node_total" + update_node_total + "    update_node_success" + update_node_success + "     update_node_fail" + update_node_fail);
+					if (update_node_total - update_node_success - update_node_fail == 0) {
+						poer_function.setLocalStorage('node_list', node_list);
+//						back_refresh_flag = true;
+						refreshList();
+						back_refresh_flag = false;
+					}
+				}
+
+				function changemode_success(data) {
+					var Flag = data.Flag;
+					if (Flag) {
+						update_node_success++;
+					} else {
+						update_node_fail++;
+					}
+					check_send_status();
+				}
+
+				function changemode_fail(xhr, textStatus, errorThrown) {
+					update_node_fail++;
+					check_send_status();
+				}
+
+				function change_mode(node_info) {
+					var url = poer_url.update_node(userId, node_info.Id);
+					var data = poer_public.node_to_json(node_info, userTempUnit);
+					poer_function.update_node(url, data, changemode_success, changemode_fail);
+				}
+				function change_work_mode(workmode) {
+					if (!can_write) {
+						poer_public.alert(poer_language.label_set_updating(language));
+						return;
+					}
+					var type;
+					update_node_array = new Array();
+					var work_mode;
+					var show_workmode;
+					switch (workmode) {
+						case 'home':
+							work_mode = 0;
+							show_workmode = poer_language.label_home(language);
+							break;
+						case 'away':
+							work_mode = 3;
+							show_workmode = poer_language.label_away(language);
+							break;
+						case 'off':
+							work_mode = 2;
+							show_workmode = poer_language.label_off(language);
+							break;
+					}
+					setBackTask(false);
+					var btnArray = [poer_language.label_no(language), poer_language.label_yes(language)];
+					mui.confirm(poer_language.label_change_workmode_to(language) + "'" + show_workmode + "'?",
+						poer_language.label_confirm(language), btnArray,
+						function(e) {
+							if (e.index == 1) { //确认修改
+								node_show();
+								var write_status_info = poer_function.getLocalStorage("write_status_info");
+								var write_status_type = poer_function.getLocalStorage("write_status_type");
+								var node_status_array = new Array();
+								for (var i in write_status_info) {
+									node_status_array[i] = write_status_info[i];
+								}
+								update_node_total = 0;
+								update_node_success = 0;
+								update_node_fail = 0;
+								var node_info;
+								var node_id;
+								for (var i in node_list) {
+									node_info = node_list[i];
+									type = node_info['NodeType'];
+									if (type != 0 && type != 1) {
+										continue;
+									}
+									//设备离线或网关离线也不处理
+									if ((!node_info['RfLinkGateway']) || (!gateway_array[node_info['GatewayId']])) {
+										continue;
+									}
+									node_id = node_info['Id'];
+									if (node_status_array[node_id] == 0) {
+										continue;
+									}
+									update_node_total++;
+									update_node_array.push(node_id);
+									node_info.WorkMode = work_mode;
+									node_info.HolidayEnable = false;
+									node_info.HolidayStart = 0;
+									node_info.HolidayEnd = 0;
+									node_info.OverrideIsOpen = false;
+									node_info.OverrideTemperature = 0;
+									node_info.OverrideTime = 0;
+									node_list[i] = node_info; //更新缓存，不然等服务器返回太慢了
+									can_write = false;
+									//----
+									write_status_info[node_id] = 0;
+									write_status_type[node_id] = 1;
+									poer_function.setLocalStorage('write_status_info', write_status_info);
+									poer_function.setLocalStorage('write_status_type', write_status_type);
+									//----
+									change_mode(node_info);
+								}
+								if (update_node_total == 0) {
+									setBackTask(true);
+								}else{
+									setBackTask(false);
+								}
+							} else {
+								setBackTask(true);
+							}
+						});
+				}
+
+				function change_holiday_mode(start_time, end_time) {
+					update_node_array = new Array();
+					var type;
+					var work_mode = 3;
+					var show_workmode = poer_language.label_holiday(language);
+					var day_time = new Date().getTime() / 1000;
+					//var holiday_enable = true;
+					var holiday_is_open = false;
+					if ((start_time - day_time <= 0) && (end_time - day_time > 0)) {
+						holiday_is_open = true;
+					}
+					setBackTask(false);
+					var btnArray = [poer_language.label_no(language), poer_language.label_yes(language)];
+					mui.confirm(poer_language.label_change_workmode_to(language) + "'" + show_workmode + "'?",
+						poer_language.label_confirm(language), btnArray,
+						function(e) {
+							if (e.index == 1) { //确认修改
+								var write_status_info = poer_function.getLocalStorage("write_status_info");
+								var node_status_array = new Array();
+								for (var i in write_status_info) {
+									node_status_array[i] = write_status_info[i];
+								}
+								update_node_total = 0;
+								update_node_success = 0;
+								update_node_fail = 0;
+								var node_info;
+								var node_id;
+								for (var i in node_list) {
+									node_info = node_list[i];
+									type = node_info['NodeType'];
+									if (type != 0 && type != 1) {
+										continue;
+									}
+									//设备离线或网关离线也不处理
+									if ((!node_info['RfLinkGateway']) || (!gateway_array[node_info['GatewayId']])) {
+										continue;
+									}
+									node_id = node_info['Id'];
+									if (node_status_array[node_id] == 0) {
+										continue;
+									}
+									update_node_total++;
+									update_node_array.push(node_id);
+									node_info.WorkMode = node_info['WorkMode'];
+									node_info.HolidayEnable = true;
+									node_info.HolidayStart = start_time;
+									node_info.HolidayEnd = end_time;
+									node_info.OverrideIsOpen = node_info['OverrideIsOpen'];
+									node_info.OverrideTemperature = node_info['OverrideTemperature'];
+									node_info.OverrideTime = node_info['OverrideTime'];
+									node_list[i] = node_info; //更新缓存，不然等服务器返回太慢了
+									change_mode(node_info);
+								}
+								if (update_node_total == 0) {
+									setBackTask(true);
+								}else{
+									setBackTask(false);
+								}
+							} else {
+								setBackTask(true);
+							}
+						});
+				}
+				function get_info_finished() {
+					//数据全部取完
+					if (get_gateway_finished && get_node_finished) {
+						poer_function.setLocalStorage('update_back_refresh', true);
+//						back_refresh_flag = true;
+						back_refresh_flag2 = true;
+						back_locate_id = null;
+						back_locate_text = null;
+						if(toastWaiting != undefined){
+							toastWaiting.close();
+						}
+						refreshList();
+					}
+				}
+
+				function get_node_success(data) {
+					//提示标志位，保证ajax失败只提醒一次
+					flag_toast = false;
+					//对数据进行解析，温度转换
+					var user_info = poer_function.getLocalStorage("user_info");
+					var tempUnit = user_info['DisplayMode'];
+					var node;
+					var curTemperature;
+					var manTemperature;
+					var ecoTemperature;
+					var offTemperature;
+					var overrideTemperature;
+					var sptTemprature;
+					for (var i in data) {
+						if (data[i]['NodeType'] < 2) {
+							curTemperature = data[i]['CurTemperature'];
+							manTemperature = data[i]['ManTemprature'];
+							ecoTemperature = data[i]['EcoTemprature'];
+							offTemperature = data[i]['OffTemprature'];
+							overrideTemperature = data[i]['OverrideTemperature'];
+							sptTemprature = data[i]['SptTemprature'];
+							if (tempUnit == 0) {
+								data[i]['CurTemperature'] = parseInt(curTemperature / 9);
+								data[i]['ManTemperature'] = parseInt(manTemperature / 9);
+								data[i]['OffTemperature'] = parseInt(offTemperature / 9);
+								data[i]['EcoTemperature'] = parseInt(ecoTemperature / 9);
+								data[i]['OverrideTemperature'] = parseInt(overrideTemperature / 9);
+								data[i]['SptTemprature'] = parseInt(sptTemprature / 9);
+							} else {
+								data[i]['CurTemperature'] = parseInt(320 + curTemperature / 5);
+								data[i]['ManTemperature'] = parseInt(320 + manTemperature / 5);
+								data[i]['OffTemperature'] = parseInt(320 + offTemperature / 5);
+								data[i]['EcoTemperature'] = parseInt(320 + ecoTemperature / 5);
+								data[i]['OverrideTemperature'] = parseInt(320 + overrideTemperature / 5);
+								data[i]['SptTemprature'] = parseInt(320 + sptTemprature / 5);
+							}
+						}
+					}
+					poer_function.setLocalStorage("node_list", data);
+					//设置每个node的写状态
+					var write_status_info = poer_function.getLocalStorage("write_status_info");
+					var write_status_type = poer_function.getLocalStorage("write_status_type");
+					var write_status_flag = poer_function.getLocalStorage("write_status_flag"); 
+					var id;
+					if (write_status_flag != 'flag') {
+						for (var i in data) {
+							id = data[i]['Id'];
+							write_status_info[id] = 1;
+							write_status_type[id] = 0;
+						}
+						poer_function.setLocalStorage("write_status_info", write_status_info);
+						poer_function.setLocalStorage("write_status_type", write_status_type);
+						poer_function.setLocalStorage("write_status_flag", 'flag');
+					} else {
+						for (var i in data) {
+							id = data[i]['Id'];
+							if(write_status_info[id] == undefined){
+								write_status_info[id] = 1;
+								write_status_type[id] = 0;
+							}else{
+								if(data[i]['WriteStatus'] == 0 && write_status_type[id] != 0){
+									write_status_info[id] = data[i]['WriteStatus'];
+								}else{
+									write_status_info[id] = 1;
+									write_status_type[id] = 0;
+								}
+							}
+//							console.log("----------------------------------");
+//							console.log("ID:"+id);
+//							console.log("本地info:"+write_status_info[id]);
+//							console.log("本地type:"+write_status_type[id]);
+//							console.log("服务器info:"+data[i]['WriteStatus']);
+						}
+//						console.log("==================================");
+						poer_function.setLocalStorage("write_status_info", write_status_info);
+						poer_function.setLocalStorage("write_status_type", write_status_type);
+					}
+					get_node_finished = true;
+					get_info_finished();
+				}
+
+				function get_node_fail(xhr, textStatus, errorThrown) {
+					if(back_locate_text != null){
+						cur_locate_id = back_locate_id;
+						poer_function.setLocalStorage("cur_locate_id", cur_locate_id); //改变当前区域id
+						locate_name_div.innerHTML = back_locate_text + "<img src='../img/lan_icon_show_select.png' style='width:10px;margin-left:5px;'/>";
+						poer_function.setLocalStorage('update_back_refresh', true);
+					}
+//					back_refresh_flag = true;
+					get_gateway_finished = true;
+					get_node_finished = true;
+					back_refresh_flag2 = true;
+					if(toastWaiting != undefined)
+						toastWaiting.close();
+					//提示失败
+					if(!flag_toast){
+						poer_public.toast(poer_language.error_ajax(language));
+						flag_toast = true;
+					}
+				}
+
+				function getNodeList(userId, locateId) {
+					var url = poer_url.node_list(userId, locateId);
+					poer_function.get_node_list(url, {}, get_node_success, get_node_fail);
+				}
+
+				function get_gateway_success(data) {
+					poer_function.setLocalStorage("gateway_list", data);
+					get_gateway_finished = true;
+					getNodeList(userId, cur_locate_id);
+				}
+
+				function get_gateway_fail(xhr, textStatus, errorThrown) {
+					if(back_locate_id != null){
+						cur_locate_id = back_locate_id;
+						poer_function.setLocalStorage("cur_locate_id", cur_locate_id); //改变当前区域id
+						locate_name_div.innerHTML = back_locate_text + "<img src='../img/lan_icon_show_select.png' style='width:10px;margin-left:5px;'/>";
+					}
+					poer_function.setLocalStorage('update_back_refresh', true);
+//					back_refresh_flag = true;
+					get_gateway_finished = true;
+					get_node_finished = true;
+					back_refresh_flag2 = true;
+					if(toastWaiting != undefined)
+						toastWaiting.close();
+					//提示失败
+					if(!flag_toast){
+						poer_public.toast(poer_language.error_ajax(language));
+						flag_toast = true;
+					}
+				}
+
+				function getGatewayList(userId, locateId) {
+					var url = poer_url.gateway_list(userId, locateId);
+					poer_function.get_gateway_list(url, {}, get_gateway_success, get_gateway_fail);
+				}
+				function setDefaultLocateSuccess() {
+				}
+
+				function setDefaultLocateFailed() {
+				}
+				var receiveNotification = function() {
+					//					var content = plus.Push.receiveNotification.alert;
+										alert("receiveNotification:" + content);
+				};
+				//				var receiveMessage = function() {
+				//					var msg = plus.Push.receiveMessage.message;
+				//					alert("openNotification:" + msg);
+				//				};
+				var openNotification = function() {
+					console.log('openNotification');
+//?					var notification = plus.Push.openNotification;
+//?					var extra = JSON.parse(notification.extras["cn.jpush.android.EXTRA"]);
+//?					if (userId != extra.user_id)
+//?						return;
+//?					var event_id = extra.event_id;
+//?					poer_function.setLocalStorage("event_id", event_id);
+//?					poer_public.openWindow("alerm_detail.html", "alerm_detail");
+				};
+				//				document.addEventListener("jpush.receiveMessage", receiveMessage, false);
+//				document.addEventListener("jpush.receiveNotification", receiveNotification, false);
+				function startUpdate() {
+					setTimeout(function() {
+						var write_status_info = poer_function.getLocalStorage("write_status_info");
+						for (var i in write_status_info) {
+							write_status_info[i] = 1;
+						}
+						poer_function.setLocalStorage("write_status_info", write_status_info);
+						refreshList();
+					}, 180000);
+				}
+
+				var nodeAddStack = [];
+				function getNodeAddInfo() {
+					$.each( nodeAddStack, function(index, value) {
+						if( value.node_sn ) {
+							if( value.checkAddCount > 12 ) {
+								value.checkAddCount = 0;
+								poer_public.alert(value.node_sn.toUpperCase() + "\n" + poer_language.label_add_device_failed(language), function() {
+									$(value.node_sn).parent().remove();
+								});
+								nodeAddStack.splice(index, 1);
+							}else{
+								var url = poer_url.node_add_info( userId, cur_locate_id, value.node_sn );
+								poer_function.node_add_info( url, {}, function(result) {
+									//console.log( "node_sn:  " + value.node_sn );
+									//console.log("count:  " + value.checkAddCount + "get node add info:  " + JSON.stringify(result) );
+									if( result.Data.status == 5 ) {
+										nodeAddStack.splice(index, 1);
+										$(value.node_sn).parent().remove();
+									}
+								}, function() {
+									//console.log("node add info fail");
+								});
+							};
+							value.checkAddCount++;
+						}
+					});
+					
+					//console.log( checkAddNodeCount );
+					//console.log( "FUNC----get node info:   curNodeSN: " + curNodeSN + "   " + "openAddNodeCheck:  " + openAddNodeCheck);
+//					if( curNodeSN && openAddNodeCheck ) {
+
+//						if( checkAddNodeCount > 12 ) {
+//							checkAddNodeCount = 0;
+//							poer_public.alert(poer_language.label_add_device_failed(language));
+//							openAddNodeCheck = false;
+//						}else{
+//							var url = poer_url.node_add_info( userId, cur_locate_id, curNodeSN );
+//							poer_function.node_add_info( url, {}, function(result) {
+//								//console.log("count:  " + checkAddNodeCount + "get node add info:  " + JSON.stringify(result) );
+//								if( result.Data.status == 5 ) {
+//									openAddNodeCheck = false;
+//									checkAddNodeCount = 0;
+//								}else{
+//									openAddNodeCheck = true;
+//								}
+//							}, function() {
+//								//console.log("node add info fail");
+//							});
+//						}
+//						checkAddNodeCount++;
+//					}
+				}
+				
+				function createAddWaitDevice( node_mac ) {
+					//console.log("add wait device")
+					var _node_mac = node_mac;
+					var li = document.createElement("li");
+					$(li).addClass("fox_li self-device-left");
+					var str = '<a id="' + _node_mac + '" class="self-add-wait" href="javascript:;" style="color: #006879">\
+							<div class="fox_online_div">\
+								<div class="fox_div_left">\
+									<div class="fox_div_top">\
+										<div class="fox_div_name">' + _node_mac + '</div>\
+										<div class="fox_div_workmode"><a><span class="mui-spinner"></span></a></div>\
+									</div>\
+									<div class="fox_div_bottom">\
+										<div class="fox_div_bottom_left" style="width: 100%">\
+											<div class="self-add-label">' + poer_language.label_add_device_waitting(language) + '</div>\
+										</div>\
+									</div>\
+								</div>\
+							</div>\
+						</a>';
+					li.innerHTML = str;
+					$(ul).append($(li));
+				};
+				
+				function createAddWaitSecurity( node_mac ) {
+					var _node_mac = node_mac;
+					var li = document.createElement("li");
+					$(li).addClass("fox_li self-device-right");
+					var str = "<a id='" + _node_mac + "' class='self-add-wait' href='javascript:;' style='color: #006879'>\
+						<div class='fox_online_div'>\
+							<div class='fox_div_left'>\
+								<div class='fox_div_top'>\
+									<div class='fox_div_name'>" + _node_mac + "</div>\
+									<div class='fox_div_workmode'><a><span class='mui-spinner'></span></a></div>\
+								</div>\
+								<div class='fox_div_bottom'>\
+									<div class='fox_div_bottom_right' style='width: 100%'>\
+										<div class='fox_div_word'>" + poer_language.label_add_device_waitting(language) + "</div>\
+									</div>\
+								</div>\
+							</div>\
+						</div>\
+					</a>";
+					li.innerHTML = str;
+					$(ul).append($(li));
+				}
+				/***************************函数定义*****************************/
+				/***************************首次打开*****************************/
+				show_label();
+				refreshList();
+				label_device_one.innerHTML = devicetype_array[0];
+				label_device_two.innerHTML = devicetype_array[1];
+				backRefresh();
+				var i = 0;
+				var time_interval = setInterval(function() {
+					i++;
+//					console.log("testTime:"+i);
+				}, 1000);
+				/***************************首次打开*****************************/
+				/***************************事件定义*****************************/
+				mui("#node_list").on('click', 'a', function(e) {
+					var id = this.id;
+					var node_info;
+					if( $(this).hasClass("self-add-wait") ) return;
+					poer_function.setLocalStorage("node_detail_id", id);
+					
+					for (var i in node_list) {
+						if(node_list[i]['Id'] == id)
+							node_info = node_list[i];
+					}
+					
+					//网关不在线
+					gateway_id = node_info['GatewayId'];
+					if (!gateway_array[gateway_id]){
+						return;
+					}
+					
+					//网关在线，设备不在线
+					if (this.children[0].className == "fox_offline_div"){
+						switch(devicetype_index){
+							case 0:
+								poer_public.openWindow("node_detail.html", "node_detail_" + id);
+								break;
+							case 1:
+								poer_public.openWindow("security_detail.html", "security_detail");
+								break;
+							default:
+								break;
+						}
+					}else{
+						switch (devicetype_index) {
+						case 0:
+							//激活,临时处理
+							var url = poer_url.set_active(userId, id);
+							var data = {
+								"time-interval": 60
+							};
+							poer_function.set_active(url, JSON.stringify(data), set_active_success, set_active_fail);
+//?							var node_detail_page = plus.webview.getWebviewById("node_detail_" + id);
+//?							if (node_detail_page != null) {
+//?								mui.fire(node_detail_page, 'refresh_page', {});
+//?							}
+							poer_public.openWindow("node_detail.html", "node_detail_" + id);
+							break;
+						case 1:
+							poer_public.openWindow("security_detail.html", "security_detail");
+							break;
+						default:
+							break;
+					}
+					}
+				});
+				
+				document.getElementById('menu').addEventListener('click', function() {
+					poer_public.openWindow("menu_info.html", "menu_info");
+				});
+				doc.getElementById("home_btn").addEventListener('click', function() {
+					change_work_mode('home');
+				});
+				doc.getElementById("away_btn").addEventListener('click', function() {
+					change_work_mode('away');
+				});
+				doc.getElementById("holiday_btn").addEventListener('click', function() {
+					if (!can_write) {
+						poer_public.alert(poer_language.label_set_updating(language));
+						return;
+					}
+					poer_function.setLocalStorage("holiday_from", 'main');
+					poer_public.openWindow("holiday_setting.html", "holiday_set");
+				});
+				doc.getElementById("off_btn").addEventListener('click', function() {
+					change_work_mode('off');
+				});
+				doc.getElementById("add_device").addEventListener('click', function() {
+					poer_public.openWindow("add_device.html", "add_device");
+				});
+				doc.getElementById("alert_record").addEventListener('click', function() {
+					poer_public.openWindow("alerm_list.html", "alerm_record",true);
+				});
+				doc.getElementById("list_add_device").addEventListener('click', function() {
+					poer_public.openWindow("add_device.html", "add_device");
+				});
+				label_device_one.addEventListener('click', function() {
+					devicetype_index = 0;
+					change_device_type = true;
+					refreshList();
+					nav_foot.style.display = "";
+				}, false);
+				label_device_two.addEventListener('click', function() {
+					devicetype_index = 1;
+					change_device_type = true;
+					refreshList();
+					nav_foot.style.display = "none";
+				}, false);
+
+				//切换区域按钮
+				locate_name_div.addEventListener('click', function() {
+					var locate_data = new Array();
+					var locate_list = poer_function.getLocalStorage("locate_list");
+					//备份原始区域id
+					back_locate_id = cur_locate_id;
+					for (var i in locate_list) {
+						if(locate_list[i]['ID'] == cur_locate_id){
+							//备份原始区域显示名
+							back_locate_text = locate_list[i]['Name'];
+						}
+						locate_data.push({
+							value: locate_list[i]['ID'],
+							text: locate_list[i]['Name']
+						});
+					}
+					locatePicker.setData(locate_data);
+					locatePicker.pickers[0].setSelectedValue(cur_locate_id);
+					locatePicker.show(function(items) {
+						toastWaiting = poer_public.showWaiting(poer_language.msg_change_local(language));
+						cur_locate_id = items[0].value;
+						cur_locate_text = items[0].text;
+						//先改变显示区域名
+						locate_name_div.innerHTML = items[0].text + "<img src='../img/lan_icon_show_select.png' style='width:10px;margin-left:5px;'/>";
+						poer_function.setLocalStorage("cur_locate_id", cur_locate_id); //改变当前区域id
+						//15秒定时刷新关闭
+						poer_function.setLocalStorage('update_back_refresh', false);
+						get_gateway_finished = false;
+						get_node_finished = false;
+						back_refresh_flag = false;
+						back_refresh_flag2 = false;
+						getGatewayList(userId, cur_locate_id);
+						var url = poer_url.update_locate(userId, cur_locate_id);
+						var data = {
+							LocateId: cur_locate_id,
+							LocateName: cur_locate_text,
+							IsDefault: true
+						};
+						poer_function.update_locate(url, JSON.stringify(data), setDefaultLocateSuccess, setDefaultLocateFailed);
+					});
+				});
+				window.addEventListener('set_holiday', function(event) {
+					//获得事件参数
+					var result = event.detail;
+					change_holiday_mode(result.start_time, result.end_time);
+				});
+				window.addEventListener("reloadNodeList", function(event) {
+					getGatewayList(userId, cur_locate_id);
+				});
+				window.addEventListener("beforeDeleteRefresh", function(event) {
+					toastWaiting = poer_public.showWaiting(poer_language.label_updating(language));
+					//15秒定时刷新关闭
+					poer_function.setLocalStorage('update_back_refresh', false);
+					get_gateway_finished = false;
+					get_node_finished = false;
+					back_refresh_flag = false;
+					back_refresh_flag2 = false;
+					getGatewayList(userId, cur_locate_id);
+				});
+				window.addEventListener('refreshPage', function(event) {
+//					back_refresh_flag = true;
+//					change_device_type = false;
+					//获得事件参数
+					refreshList();
+				});
+				window.addEventListener('refreshNode', function(event) {
+					if(!can_write){
+						refreshList();
+					}
+				});
+				//添加设备状态
+				window.addEventListener('getDeviceAddInfo', function(event) {
+					//console.log("main get fire : " + event.detail.node_sn);
+					curNodeSN = event.detail.node_sn;
+					var selfCanAdd = true;
+					$.each(nodeAddStack, function(n, val) {
+						if( val.node_sn == curNodeSN ) {
+							selfCanAdd = false;
+							return false;
+						}
+					});
+					nodeAddStack.push({
+						"node_sn":curNodeSN,
+						"checkAddCount": 0,
+						"locate_id": poer_function.getLocalStorage("cur_locate_id")
+					});
+				});
+				//移除设备添加状态序列
+				window.addEventListener("removeDeviceAddInfo", function(e) {
+					var removeNodeSn = e.detail.node_sn;
+					$.each(nodeAddStack, function(n, val) {
+						if( val.node_sn == removeNodeSn ) {
+							nodeAddStack.splice( n, 1);
+						}
+					});
+				});
+				//首页回退一次就退出app
+				m.back = function(event) {
+					//首次按键，提示‘再按一次退出应用’
+					if (!first) {
+						first = new Date().getTime();
+						poer_public.toast(poer_language.msg_press_again_to_exit(language), {
+							verticalAlign: "bottom"
+						});
+						setTimeout(function() {
+							first = null;
+						}, 2000);
+					} else {
+						if (new Date().getTime() - first < 2000) {
+							localStorage.removeItem("write_status_info");
+							plus.runtime.quit();
+						}
+					}
+				};
+				mui.plusReady(function(){
+					
+					plus.push.addEventListener("click",function(msg){
+						
+						if(plus.os.name == 'iOS'){
+//							alert( "用户点击了消息: " + JSON.stringify(msg) );
+							var extra = msg.payload;
+							if (userId != extra.user_id)
+								return;
+							var event_id = extra.event_id;
+							poer_function.setLocalStorage("event_id", event_id);
+							poer_public.openWindow("alerm_detail.html", "alerm_detail");
+						}else if(plus.os.name == 'Android'){
+							console.log("用户点击了消息: " + JSON.stringify(msg));
+						}
+					},false);
+				});
+				document.addEventListener("jpush.openNotification", openNotification, false);
+				document.addEventListener("startUpdate", function() {
+					startUpdate();
+				});
+				/***************************事件定义*****************************/
+			});
+		}(mui, document));
+	</script>
+	<!--<script src="../js/update.js"></script>-->
+
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<title></title>
+		<link href="../css/mui.min.css" rel="stylesheet" />
+		<link href="../css/faq.css" rel="stylesheet" />
+	</head>
+
+	<body>
+		<header class="mui-bar mui-bar-nav fox_header">
+			<a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left fox-white"></a>
+			<h1 class="mui-title fox-white">FAQ</h1>
+		</header>
+		<div class="fox_content">
+			<div id="faq"></div>
+			<button type="button" id="btnTryAgain"></button>
+		</div>
+		<script src="../js/mui.min.js"></script>
+		<script src="../js/logger.js"></script>
+		<script src="../js/language.js"></script>
+		<script src="../js/function.js"></script>
+		<script src="../js/public.js"></script>
+		<script>
+			(function($, doc) {
+				$.init({
+
+				});
+
+				$.plusReady(function(e) {
+					plus.screen.lockOrientation("portrait-primary");
+					var settings_login_info = poer_function.getLocalStorage("login_info");
+					language = settings_login_info.language;
+					var btnTryAgain = doc.getElementById("btnTryAgain");
+					var faq = doc.getElementById("faq");
+					btnTryAgain.innerHTML = poer_language.label_try_again(language);
+					if(language != "English" && language != "Chinese" && language != "Romanian"){
+						language = "English";
+					}
+					faq.innerHTML = poer_language.msg_faq(language);
+//					doc.getElementById(language).style.removeProperty("display");
+
+					btnTryAgain.addEventListener("tap", function() {
+						plus.webview.close("add_gateway", "none");
+						$.back();
+					})
+				});
+			}(mui, document));
+		</script>
+	</body>
+
+</html>

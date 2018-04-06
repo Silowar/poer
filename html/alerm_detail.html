@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<title></title>
+		<link href="../css/mui.min.css" rel="stylesheet" />
+		<link href="../css/alerm_detail.css" rel="stylesheet" />
+	</head>
+
+	<body>
+		<header class="mui-bar mui-bar-nav fox_header">
+			<a class="mui-action-back mui-icon mui-icon-left-nav mui-pull-left fox-white"></a>
+			<h1 id="pageTitle" class="mui-title fox-white"></h1>
+		</header>
+		<nav class="fox-bar mui-bar-tab" id="nav_foot">
+		    <a id="delete_btn" class="fox-tab-item">
+		        <div>
+		            <div class="fox-icon fox-icon-delete"></div>
+		            <div class="fox-tab-label" id="label_delete"></div>
+		        </div>
+		    </a>
+		</nav>
+		<div class="fox_content">
+			<article class="message-content">
+				<h1 id="title"></h1>
+				<h5 id="date"></h5>
+				<div class="hr"></div>
+				<p id="message">
+				</p>
+			</article>
+		</div>
+		<script src="../js/mui.min.js"></script>
+		<script src="../js/common.js"></script>
+		<script src="../js/logger.js"></script>
+		<script src="../js/function.js"></script>
+		<script src="../js/url.js"></script>
+		<!--<script src="../js/public.js"></script>-->
+		<script src="../js/language.js"></script>
+		<script src="../js/public.js"></script>
+		<script>
+			(function($, doc) {
+				$.plusReady(function() { 
+					plus.screen.lockOrientation("portrait-primary");
+					var settings_login_info = poer_function.getLocalStorage("login_info");
+					var userId = poer_function.getLocalStorage("user_info").Id;
+					var eventId = poer_function.getLocalStorage("event_id");
+//					console.log("eventIds:"+eventId);
+					poer_function.setLocalStorage("event_id", eventId);
+					var language;
+					var waitingToast;
+					language = settings_login_info.language;
+					doc.getElementById("pageTitle").innerHTML = poer_language.title_alerm_message(language);
+					doc.getElementById("label_delete").innerHTML = poer_language.label_delete(language);
+					getMessageInfo();
+					var allEvent = new Array();
+					allEvent.push(eventId);
+					var reqData = {
+	                        id: allEvent
+	              }
+					var btnArray = [poer_language.label_no(language), poer_language.label_yes(language)];
+					delete_btn.addEventListener('tap', function () {
+						mui.confirm(
+							poer_language.label_delete(language) + "?",
+	                        poer_language.label_confirm(language), btnArray,
+	                        function(e){
+	                        		if (e.index == 1) { //确认修改
+	                        			delete_event();
+	                            }
+	                        }
+	                    );
+					});
+					function delete_event() {
+		                var url = poer_url.delete_event(userId);
+//		                console.log("reqData:"+reqData['id']);
+		                poer_function.delete_event(url, JSON.stringify(reqData), delete_success, delete_fail);
+		            }
+					
+					function delete_success(data) {
+		                	var Flag = data.Status;
+		                if (Flag == RespStatus.SUCCESS) {
+		                    poer_public.alert(poer_language.label_delete_success(language));
+		                    
+		                }
+//		                var node_detail_page = plus.webview.getWebviewById('alerm_record');
+//		                mui.fire(node_detail_page, 'reload', {});
+//		                node_detail_page.reload(true);
+		                mui.back();
+//		                poer_public.openWindow("alerm_list.html", 'alerm_record',true);
+		            }
+					
+					$.back = function(event) {
+						poer_public.openWindow("alerm_list.html", 'alerm_record',true);
+						plus.webview.currentWebview().close();
+					};
+					
+					function delete_fail(xhr, textStatus, errorThrown) {
+		                poer_public.alert(poer_language.label_delete_failed(language));
+		            }
+					
+					function getMessageInfo() {
+						waitingToast = poer_public.showWaiting(poer_language.msg_loading(language));
+						var reqUrl = poer_url.alerm_message_detail(userId, eventId);
+						poer_function.alerm_message_detail(reqUrl, {}, getInfoSuccess, getInfoFailed);
+					}
+
+					function getInfoSuccess(result) {
+						switch (result.Status) {
+							case RespStatus.SUCCESS:
+								var alermInfo = result.Data;
+//								doc.getElementById("pageTitle").innerHTML = alermInfo.title;
+								doc.getElementById("title").innerHTML = alermInfo.title;
+								doc.getElementById("date").innerHTML = alermInfo.date;
+								doc.getElementById("message").innerHTML = alermInfo.message;
+								break;
+							case RespStatus.E0001:
+								break;
+							default:
+								break;
+						}
+						waitingToast.close();
+					}
+
+					function getInfoFailed(xhr) {
+						waitingToast.close();
+					}
+				});
+			}(mui, document));
+		</script>
+	</body>
+
+</html>

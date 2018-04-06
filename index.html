@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html class="ui-page-login">
+
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<title></title>
+		<link href="css/mui.css" rel="stylesheet" />
+		<link href="css/index.css" rel="stylesheet" />
+		<link href="css/mui.picker.css" rel="stylesheet" />
+		<link href="css/mui.poppicker.css" rel="stylesheet" />
+	</head>
+
+	<body class="fox-backgound-white">
+		<div class="fox_content">
+			<div style="height:60px;"></div>
+			<div style="height:90px;width:100%;">
+				<div class="fox-top-img">
+				</div>
+			</div>
+			<div style="width:85%;margin:0 auto;">
+				<div class="fox-input-email">
+					<input id='email' type="email" value="" placeholder="" style="padding-left:50px;background-color:transparent;">
+				</div>
+			</div>
+			<div style="width:85%;margin:0 auto;">
+				<div class="fox-input-password">
+					<input id='password' type="password" placeholder="" style="padding-left:50px;background-color:transparent;">
+				</div>
+			</div>
+			<div style="width:85%;margin:0 auto;">
+				<div class="fox-input-select" id="language">
+					<div id="language_value" style="padding: 10px 0px 0px 20px;">English</div>
+				</div>
+			</div>
+			<div style="margin-top:40px;height:60px;">
+				<div style="width:85%;margin: 0 auto;">
+					<button id="login" type="button" class="fox_btn_login"><font color="#ffffff" size="4" id="login_text">Login</font></button>
+				</div>
+			</div>
+			<div style="height:60px;">
+				<div style="width:85%;margin: 0 auto;">
+					<button id="btnReg" type="button" class="fox_btn_login"><font color="#ffffff" size="4" id="reg">Register</font></button>
+				</div>
+			</div>
+			<div style="height:40px;width:100%;">
+				<div style="text-align: center;">
+					<!--<a id='reg' style="color: #20B2AA;"></a><span class="spliter">|</span>-->
+					<a id='forgetPassword' style="color: #20B2AA;">Forget Password?</a>
+				</div>
+			</div>
+			<div style="width:85%;margin:0 auto;">
+				<div style="text-align: center;">
+					<a id="demo_login" style="color: #20B2AA;">Demo Login</a>
+				</div>
+			</div>
+		</div>
+		<script src="js/mui.js"></script>
+		<script src="js/mui.picker.js"></script>
+		<script src="js/mui.poppicker.js"></script>
+		<script src="js/logger.js"></script>
+		<script src="js/poer_download.js"></script>
+		<script src="js/jpush.js"></script>
+		<!-- <script src="js/aipush.js"></script> -->
+		<script src="js/function.js"></script>
+		<!--<script src="js/storages.js"></script>-->
+		<script src="js/url.js"></script>
+		<script src="js/public.js"></script>
+		<script src="js/language.js"></script>
+		<script src="js/event_listeners.js"></script>
+		
+		<script>
+			var language;
+			var languagePicker;
+			var lang_options = poer_language.lang_options;
+			var pickData = [];
+			for (var key in lang_options) {
+				if (lang_options[key] != "") {
+					pickData.push({
+						value : key,
+						text : lang_options[key]
+					});
+				}
+			}
+
+			function language_change(value) {
+				language = value;
+				var login_info = poer_function.getLocalStorage("login_info");
+				login_info.language = value;
+				poer_function.setLocalStorage("login_info", login_info);
+				show_label();
+			}
+
+			function show_label() {
+				document.getElementById("email").placeholder = poer_language.label_email_empty(language);
+				document.getElementById("password").placeholder = poer_language.label_password_empty(language);
+				document.getElementById("login_text").innerHTML = poer_language.label_login(language);
+				document.getElementById("reg").innerHTML = poer_language.label_register(language);
+				document.getElementById("forgetPassword").innerHTML = poer_language.label_forget_password(language);
+				document.getElementById("demo_login").innerHTML = poer_language.label_demo_login(language);
+				languagePicker.setData(pickData);
+				var show_language = lang_options[language];
+				document.getElementById("language_value").innerHTML = show_language;
+			}
+			(function($, doc) {
+				$.init({
+					statusBarBackground: '#f7f7f7'
+				});
+				$.ready(function() {
+					/***************************变量定义*****************************/
+//?					plus.screen.lockOrientation("portrait-primary");
+					var settings_login_info = poer_function.getLocalStorage("login_info");
+					var loginButton = doc.getElementById('login');
+					var emailBox = doc.getElementById('email');
+					var passwordBox = doc.getElementById('password');
+					var languageBox = doc.getElementById('language');
+					var regButton = doc.getElementById('reg');
+					var forgetButton = doc.getElementById('forgetPassword');
+					var demoLoginButton = doc.getElementById('demo_login');
+					var toastWaiting;
+					var email_value;
+					var password_value;
+					var get_locate_finished = false;
+					var get_gateway_finished = false;
+					var get_node_finished = false;
+					var userId;
+					var cur_locate_id;
+					var loginflag;
+					//后台定时刷新数据,15秒
+					var back_refresh_interval;
+					var refreshTimes = 0;
+					var backButtonPress = 0;
+					/***************************变量定义*****************************/
+					/***************************首次打开*****************************/
+					//获取本地账户信息
+					if (settings_login_info.hasOwnProperty("email")) {
+						language = settings_login_info.language;
+						if (settings_login_info.email != "demo@poersmart.com") {
+							emailBox.value = settings_login_info.email;
+							passwordBox.value = settings_login_info.password;
+							autologin();
+						}
+						
+					} else {
+						language = "English";
+					}
+					languagePicker = new $.PopPicker({
+						buttons: poer_language.array_confirm_buttons(language)
+					});
+					//显示标签
+					show_label();
+					languagePicker.pickers[0].setSelectedValue(language);
+					//更新检测
+//?					if(plus.os.name == 'Android'){
+//?						plus.poerDownload.checkUpdate(language);
+//?					}
+					/***************************首次打开*****************************/
+					/***************************函数定义*****************************/
+					//自动登陆
+					function autologin(){
+						loginflag = poer_function.getLocalStorage('autologin');
+						if(loginflag){
+							doLogin();
+						}
+					}
+					function backRefresh() {
+						back_refresh_interval = setInterval(function() {
+							reloadDatas();
+						}, 15000);
+					}
+
+					function reloadDatas() {
+						var refresh = poer_function.getLocalStorage('update_back_refresh');
+						if (refresh) {
+							var locate_id = poer_function.getLocalStorage("cur_locate_id");
+							getGatewayList(userId, locate_id);
+							getNodeList(userId, locate_id);
+						}
+					}
+
+					function get_info_finished() {
+						//数据全部取完
+						if (get_locate_finished && get_gateway_finished && get_node_finished) {
+							if(toastWaiting != undefined)
+								toastWaiting.close();
+//?							plus.storage.setItem("IS_LOGIN", "true");
+//?							var is_login = plus.storage.getItem("IS_LOGIN");
+							poer_public.openWindow("html/main.html", 'main');
+							poer_function.setLocalStorage("smart_config_times", 0);
+							get_locate_finished = false; //注意
+							poer_function.setLocalStorage('update_back_refresh', true);
+							//20161121注释  将index中的获取信息以及定时器移至main中
+//							setTimeout(backRefresh, 15000);
+						}
+					}
+
+					function get_node_success(data) {
+						//对数据进行解析，温度转换
+						var user_info = poer_function.getLocalStorage("user_info");
+						var tempUnit = user_info['DisplayMode'];
+						var node;
+						var curTemperature;
+						var manTemperature;
+						var ecoTemperature;
+						var offTemperature;
+						var overrideTemperature;
+						var sptTemprature;
+						for (var i in data) {
+							if (data[i]['NodeType'] < 2) {
+								curTemperature = data[i]['CurTemperature'];
+								manTemperature = data[i]['ManTemprature'];
+								ecoTemperature = data[i]['EcoTemprature'];
+								offTemperature = data[i]['OffTemprature'];
+								overrideTemperature = data[i]['OverrideTemperature'];
+								sptTemprature = data[i]['SptTemprature'];
+								if (tempUnit == 0) {
+									data[i]['CurTemperature'] = parseInt(curTemperature / 9);
+									data[i]['ManTemperature'] = parseInt(manTemperature / 9);
+									data[i]['OffTemperature'] = parseInt(offTemperature / 9);
+									data[i]['EcoTemperature'] = parseInt(ecoTemperature / 9);
+									data[i]['OverrideTemperature'] = parseInt(overrideTemperature / 9);
+									data[i]['SptTemprature'] = parseInt(sptTemprature / 9);
+								} else {
+									data[i]['CurTemperature'] = parseInt(320 + curTemperature / 5);
+									data[i]['ManTemperature'] = parseInt(320 + manTemperature / 5);
+									data[i]['OffTemperature'] = parseInt(320 + offTemperature / 5);
+									data[i]['EcoTemperature'] = parseInt(320 + ecoTemperature / 5);
+									data[i]['OverrideTemperature'] = parseInt(320 + overrideTemperature / 5);
+									data[i]['SptTemprature'] = parseInt(320 + sptTemprature / 5);
+								}
+							}
+						}
+						poer_function.setLocalStorage("node_list", data);
+						//设置每个node的写状态
+						var write_status_info = poer_function.getLocalStorage("write_status_info");//是否updating
+						var write_status_type = poer_function.getLocalStorage("write_status_type");//是否正在操作
+						var write_status_flag = poer_function.getLocalStorage("write_status_flag"); //是否第一次请求
+						var id;
+						if (write_status_flag != 'flag') {
+							for (var i in data) {
+								id = data[i]['Id'];
+								write_status_info[id] = 1;
+								write_status_type[id] = 0;
+							}
+							poer_function.setLocalStorage("write_status_info", write_status_info);
+							poer_function.setLocalStorage("write_status_type", write_status_type);
+							poer_function.setLocalStorage("write_status_flag", 'flag');
+						} else {
+							for (var i in data) {
+								id = data[i]['Id'];
+								console.log(id+":info:"+write_status_info[id]);
+								console.log(id+":type:"+write_status_type[id]);
+								console.log(id+":WriteStatus:"+data[i]['WriteStatus']);
+								if(write_status_info[id] == undefined){
+									write_status_info[id] = 1;
+									write_status_type[id] = 0;
+								}else{
+									//如果获取到服务器为updating状态时，判断该设备是否正在操作
+									if(data[i]['WriteStatus'] == 0 && write_status_type[id] != 0){
+										write_status_info[id] = data[i]['WriteStatus'];
+									}else{
+										write_status_info[id] = 1;
+										write_status_type[id] = 0;
+									}
+								}
+							}
+							console.log("---------------------------------");
+							poer_function.setLocalStorage("write_status_info", write_status_info);
+							poer_function.setLocalStorage("write_status_type", write_status_type);
+						}
+						get_node_finished = true;
+						get_info_finished();
+					}
+
+					function get_node_fail(xhr, textStatus, errorThrown) {
+						if(toastWaiting != undefined)
+							toastWaiting.close();
+					}
+
+					function getNodeList(userId, locateId) {
+						var url = poer_url.node_list(userId, locateId);
+						poer_function.get_node_list(url, {}, get_node_success, get_node_fail);
+					}
+
+					function get_gateway_success(data) {
+						poer_function.setLocalStorage("gateway_list", data);
+						get_gateway_finished = true;
+						get_info_finished();
+					}
+
+					function get_gateway_fail(xhr, textStatus, errorThrown) {
+						if(toastWaiting != undefined)
+							toastWaiting.close();
+					}
+
+					function getGatewayList(userId, locateId) {
+						var url = poer_url.gateway_list(userId, locateId);
+						poer_function.get_gateway_list(url, {}, get_gateway_success, get_gateway_fail);
+					}
+
+					function get_locate_success(data) {
+						poer_function.setLocalStorage("locate_list", data);
+						get_locate_finished = true;
+						get_info_finished();
+					}
+
+					function get_locate_fail(xhr, textStatus, errorThrown) {
+						if(toastWaiting != undefined)
+							toastWaiting.close();
+//						poer_public.toast(poer_language.label_get_locate_fail(language));
+					}
+					//获取locate列表信息
+					function getLocateList(userId) {
+						var url = poer_url.locate_list(userId);
+						poer_function.get_locate_list(url, {}, get_locate_success, get_locate_fail);
+					}
+
+					//登陆ajax成功
+					function login_success(data) {
+						poer_function.setLocalStorage("user_info", data);
+						// 给用的绑定推送别名, 统一格式：poersmart_user_{$userId}
+//?						plus.Push.setAlias("poersmart_user_" + data.Id);
+						//保存账号密码和自动登录状态
+						var auth = poer_public.base64encode(email_value + ":" + password_value);
+						var login_info = {
+							email: email_value,
+							password: password_value,
+							auth: auth,
+							language: language
+						};
+//						plus.Push.setTags(language);
+						poer_function.setLocalStorage("login_info", login_info);
+						cur_locate_id = parseInt(data.LocateId);
+						if (cur_locate_id < 1) {
+							poer_public.toast(poer_language.label_locate_error(language));
+							if(toastWaiting != undefined)
+								toastWaiting.close();
+							return;
+						}
+						poer_function.setLocalStorage("cur_locate_id", cur_locate_id);
+						var cur_gateway_id = data.GatewayId;
+						//没有绑定网关的情况下
+						if (cur_gateway_id == "0" || cur_gateway_id == "-1") {
+							//poer_public.toast("Please bind gateway!");
+							//return;
+						}
+						userId = parseInt(data.Id);
+						//并发获取locatelist, gatewaylist, nodelist
+						getLocateList(userId);
+						getGatewayList(userId, cur_locate_id);
+						getNodeList(userId, cur_locate_id);
+						poer_function.setLocalStorage('autologin', true);
+					}
+
+					//登陆ajax失败
+					function login_fail(xhr, textStatus, errorThrown) {
+						if(toastWaiting != undefined)
+							toastWaiting.close();
+						poer_public.toast(poer_language.label_login_fail(language));
+					}
+
+					function doLogin() {
+						email_value = emailBox.value.toLowerCase().trim();
+						password_value = passwordBox.value.trim();
+						if (email_value.length < 5) {
+							poer_public.toast(poer_language.label_email_too_short(language));
+							return false;
+						}
+						if (email_value.length > 50) {
+							poer_public.toast(poer_language.label_email_too_long(language));
+							return false;
+						}
+						if (password_value.length < 3) {
+							poer_public.toast(poer_language.label_password_too_short(language));
+							return false;
+						}
+						if (password_value.length > 15) {
+							poer_public.toast(poer_language.label_password_too_long(language));
+							return false;
+						}
+						toastWaiting = poer_public.showWaiting(poer_language.msg_loging(language));
+						//登陆前清空本地所有缓存，确保本地数据的正确性
+						localStorage.clear();
+						var url = poer_url.login();
+						var data = {
+							Email: email_value,
+							Passwd: password_value,
+							TimezoneOffset: 0 - new Date().getTimezoneOffset(),
+							Language:language
+						};
+						poer_function.login(url, JSON.stringify(data), login_success, login_fail);
+					}
+					
+					/***************************函数定义*****************************/
+					/***************************事件定义*****************************/
+					doc.addEventListener("netchange", netChangeListenner);
+					//语言选择按钮
+					languageBox.addEventListener('click', function(event) {
+						languagePicker.show(function(items) {
+							language_change(items[0].value);
+							//userResult.innerText = JSON.stringify(items[0]);
+							//返回 false 可以阻止选择框的关闭
+							//return false;
+						});
+					}, false);
+					//登陆按钮事件
+					loginButton.addEventListener('click', function(event) {
+						doLogin();
+					});
+					//demo登陆按钮事件
+					demoLoginButton.addEventListener('click', function(event) {
+						var url = poer_url.login();
+						email_value = "demo@poersmart.com";
+						password_value = "demo";
+						var data = {
+							Email: email_value,
+							Passwd: password_value,
+							TimezoneOffset: 0 - new Date().getTimezoneOffset()
+						};
+						toastWaiting = poer_public.showWaiting(poer_language.msg_loging(language));
+						poer_function.login(url, JSON.stringify(data), login_success, login_fail);
+					});
+					//注册按钮事件
+					doc.getElementById("btnReg").addEventListener('click', function(event) {
+						poer_public.openWindow("html/register.html", 'register',true);
+					}, false);
+					//忘记密码按钮事件
+					forgetButton.addEventListener('click', function(event) {
+						poer_public.openWindow("html/forget_password.html", 'forget_password');
+					}, false);
+					//返回事件
+//?					$.back = function(event) {
+//?						backButtonPress++;
+//?						if (backButtonPress > 1) {
+//?							plus.runtime.quit();
+//?						} else {
+//?							plus.nativeUI.toast(poer_language.label_click_to_exit(language));
+//?						}
+//?						setTimeout(function() {
+//?							backButtonPress = 0;
+//?						}, 1000);
+//?						return false;
+//?					};
+					window.addEventListener("reloadData", function(e) {
+						reloadDatas();
+					});
+					/***************************事件定义*****************************/
+//					var onAliasAndTagsSeted = function(event) {
+//						var result = "result code: " + event.arguments.resultCode + " ";
+//						result += "tags: " + event.arguments.tags + " ";
+//						result += "alias: " + event.arguments.alias + " ";
+//						$("#tagAliasResult").html(result);
+//					};
+//					document.addEventListener("jpush.setTagsWithAlias", onAliasAndTagsSeted, false);
+				});
+			}(mui, document));
+		</script>
+	</body>
+
+</html>
